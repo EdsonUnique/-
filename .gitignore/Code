@@ -1,0 +1,325 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+#define MAXSIZE 100
+
+/*
+	测试：嵌套括号
+			运算数超过1位整数且有非整数出现
+			运算数前有正负号
+			只有1个数字 
+
+
+
+
+*/
+
+
+
+typedef enum{false,true}bool;
+typedef char ElementType;
+
+typedef struct QNode{//盛放后缀表达式的队列 
+	
+	char * data;//存放字符 
+	struct QNode* next;
+
+}*QNode;
+
+typedef struct queue{
+
+	QNode front,rear;
+	
+}*Queue; 
+
+typedef struct SNode{//盛放运算符的堆栈 
+	
+	ElementType *data;
+	int top;
+	
+}*Stack;
+
+ 
+Stack createStack();
+void push(Stack s,ElementType num);
+ElementType pop(Stack s);
+bool IsStackEmpty(Stack s); 
+
+Queue createQueue();
+QNode getQueue(Queue q);
+void addQueue(Queue q,char * temp,int length);
+
+bool IsNum(ElementType num);//判断是否为数字字符
+bool GreaterPriority(ElementType current,ElementType top);
+
+void printQueue(Queue q);
+int GetPriority(ElementType num);//获取运算符的优先级 
+
+int main(){
+	
+	Stack s=NULL;
+	Queue q=NULL;
+	
+	ElementType a[MAXSIZE];//存储输入数据的字符数组 
+	int i=0,j;
+	
+	ElementType transfer[MAXSIZE];//存放中间字符转数字的数字字符 
+	
+	ElementType temp=' ';
+	
+	s=createStack();
+	q=createQueue();
+	
+	gets(a);
+	
+	i=0;
+	j=-1;
+	while(a[i]!='\0'){
+		
+		//条件一：第一个字符是'-'表明是负数，直接保存到暂存数组中
+		 if((a[i]=='-' && i==0)  || (IsNum(a[i]) || a[i]=='.')  || (i>=1 && a[i]=='-' && a[i-1]=='(') || (a[i]=='+' && i==0) || (i>=1 && a[i]=='+' && a[i-1]=='(')){
+		 	//条件二：表明该数是负数，且处于式子中间用括号括起来 
+		 	//条件三：是整数或小数
+		 	//其他条件为判断正号 
+		 	j++;
+		 	
+		 	if(j==1 && transfer[j-1]=='-' && a[i]=='0' ){
+		 		j--;//-0去掉负号 
+			 }
+			 
+			 if(j==1 && transfer[j-1]=='+'){
+		 		j--;//正号 
+			 }
+			 
+			 
+			 transfer[j]=a[i]; 
+		 }else{//否则，是运算符，将transfer数组内容转数字并保存；判断与栈顶元素的优先级 
+		 	
+		 	if(j>=0){//说明transfer中有字符需要转数字
+			 	addQueue(q,transfer,j+1);//存入输出队列 
+			 	j=-1;//清空transfer数组 
+			} 
+			
+			if(IsStackEmpty(s)){
+				//栈为空则直接入栈
+				push(s,a[i]); 
+			}else{
+				
+					if(GreaterPriority(a[i],s->data[s->top]) || (s->data[s->top]=='(' && a[i]!=')')){
+						//当前运算符比栈顶元素优先级高或者栈顶元素是左括号则入栈
+						push(s,a[i]); 
+					}else{
+						temp=' ';
+						while(!IsStackEmpty(s) && !GreaterPriority(a[i],s->data[s->top])){
+						//当前运算符比栈顶元素优先级低则将栈顶若干元素出栈 ,直到栈顶元素不大于当前元素优先级 
+						
+							if(a[i]==')'){
+								//如果当前元素是右括号则一直输出栈顶元素，进入队列，直到栈顶元素为左括号为止，左括号不入栈 
+								while(temp!='('){
+									temp=pop(s);
+									if(temp!='(')addQueue(q,&temp,1);	
+								}
+								
+								break;
+							
+							}else{ 
+								temp=pop(s);
+								
+								if(temp=='('){//如果出来的是左括号，应重新入栈，遇到右括号再出栈 
+									push(s,temp);
+									break;
+								}
+								
+								addQueue(q,&temp,1);
+
+							}
+						
+		
+						}
+					
+						if(a[i]!=')'){
+							push(s,a[i]);//最后出来的必定是当前运算符大于栈顶运算符，若当前运算符不为右括号则入栈 
+						} 
+						
+					} 
+				}
+			
+			}
+		i++; 
+	}
+	
+	if(j>=0){//说明transfer中有字符需要转数字
+	 	addQueue(q,transfer,j+1);//存入输出队列 
+	 	j=-1;//清空transfer数组 
+	} 
+	
+	//最后若栈不空则将栈中元素出栈，入队列
+	while(!IsStackEmpty(s)){
+		temp=pop(s);
+		addQueue(q,&temp,1);
+	} 
+	
+	//输出队列元素即为后缀表达式
+	printQueue(q); 
+	
+	
+	
+	return 0;
+} 
+ 
+Stack createStack(){
+	
+	Stack s=(Stack)malloc(sizeof(struct SNode));
+	s->data=(ElementType *)malloc(sizeof(ElementType)*MAXSIZE);
+	s->top=-1;
+	
+	return s;
+	
+}
+
+void push(Stack s,ElementType num){
+	
+	s->top++;
+	s->data[s->top]=num;
+}
+
+ElementType pop(Stack s){
+	
+	ElementType temp=s->data[s->top];
+	s->top--;
+	
+	return temp;
+	
+}
+
+bool IsStackEmpty(Stack s){
+	
+	bool flag=false;
+	
+	if(s->top<0){
+		flag=true;
+	}
+	
+	return flag;
+	
+}
+
+Queue createQueue(){
+	
+	Queue q=(Queue)malloc(sizeof(struct queue));
+	q->front=(QNode)malloc(sizeof(struct QNode));
+	q->front->next=NULL;//带头节点的链式队列
+	q->rear=q->front;
+	
+	return q; 
+	
+}
+
+
+QNode getQueue(Queue q){
+	
+	QNode p;
+	
+	p=q->front->next;
+	q->front->next=p->next;
+	p->next=NULL;
+	
+	
+	return p;
+	
+}
+
+void addQueue(Queue q,char * temp,int length){
+	
+	int i=0;
+	QNode p=(QNode)malloc(sizeof(struct QNode));
+	p->data=(char *)malloc(sizeof(char));
+	
+	for(;i<length;i++){
+		p->data[i]=temp[i];
+	}
+	
+	p->data[i]='\0';
+	
+	
+	p->next=NULL;
+	
+	q->rear->next=p;
+	q->rear=p;	
+	
+}
+
+bool IsNum(ElementType num){
+	//判断是否为数字字符
+	
+	bool flag=false;
+	
+	if(num>='0' && num<='9'){
+		flag=true;
+	}
+
+	return flag;
+
+}
+
+bool GreaterPriority(ElementType current,ElementType top){
+	
+	int pt1,pt2;
+	
+	pt1=GetPriority(current);
+	pt2=GetPriority(top);
+	
+	return pt1>pt2?true:false; 
+	
+}
+
+int GetPriority(ElementType num){
+	
+	int priority=-2;
+	
+	switch(num){
+		
+		case '+':
+		case '-':{
+			priority=0;
+			break;
+		}
+		
+		case '/':
+		case '*':{
+			priority=1;
+			break;
+		}
+		
+		case '(':{
+			priority=2;
+			break;
+		}
+		
+		case ')':{
+			priority=-1;
+			break;
+		}
+		
+	}
+	
+	return priority;
+	
+}
+
+void printQueue(Queue q){
+	
+	Queue temp=q;
+	
+	while(temp->front->next){
+		
+		printf("%s",getQueue(q)->data);
+		
+		if(temp->front->next){
+			printf(" ");
+		} 
+		
+	}
+	
+}
+
